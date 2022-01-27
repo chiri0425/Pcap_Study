@@ -7,6 +7,9 @@
 #include <stdint.h> // int8_t etc
 #include <sys/types.h>
 #include <sys/socket.h>
+#include "dhcpv4.h" /*dhcp header file*/
+#include <syslog.h> // log
+
 
 
 pcap_t *handle; /* Session handle */
@@ -21,6 +24,7 @@ const u_char *packet; /* The actual packet */
 struct in_addr addr; /*address */
 char *enter;
 
+
 #define SIZE_ETHERNET 14
 #define ETHER_ADDR_LEN 6
 
@@ -32,8 +36,8 @@ struct sniff_ethernet {
         u_short ether_type; /* IP? ARP? RARP? etc */
 };
 
-
-
+#define	ETHERTYPE_IP		0x0800		/* IP */
+#define	ETHERTYPE_ARP		0x0806		/* Address resolution */
 
 
 /* IP header */
@@ -56,6 +60,7 @@ struct sniff_ip {
 #define IP_V(ip) (((ip)->ip_vhl) >> 4)
 
 
+
 #define SIZE_UDP 8
 /* udp header */
 struct udp_header {
@@ -64,6 +69,7 @@ struct udp_header {
         u_short uh_ulen;         /* udp length */
         u_short uh_sum;		/*udp checksum */
 };
+
 
 /* dhcp header */
 struct dhcp_header {
@@ -98,11 +104,12 @@ struct dhcp_header {
 
 
 
+
 struct sniff_ip *ip; // The IP header
 u_int size_ip;
 struct udp_header *udp; //The UDP header
 struct dhcp_header *dhcp; //The DHCO header
-
+struct sniff_ethernet *eth; //The Ether header
 
 /* main */
 int main(void) {
@@ -139,12 +146,37 @@ int main(void) {
         }
         printf("Detects packets.\n");	
         while(pcap_next_ex(handle, &header, &packet) == 1) {
-             
+        eth=(struct sniff_ethernet*)(packet);
+
+	if(ntohs(eth->ether_type)==ETHERTYPE_IP){
 	 ip=(struct sniff_ip*)(packet+SIZE_ETHERNET);
 	 size_ip=IP_HL(ip)*4;
-	 udp=(struct udp_header*)(packet+size_ip+SIZE_ETHERNET);
-	 dhcp=(struct dhcp_header*)(packet+size_ip+SIZE_ETHERNET+SIZE_UDP);	 
-	 detection(ip,udp,dhcp);
+	   if(ip->ip_p==IPPROTO_UDP){
+		udp=(struct dhcp_header*)(packet+size_ip+SIZE_ETHERNET);
+	      if(ntohs(udp->uh_sport)==DHCPV4_CLIENT_PORT||ntohs(udp->uh_sport)==DHCPV4_SERVER_PORT){
+		if(ntohs(udp->uh_dport)==DHCPV4_CLIENT_PORT||ntohs(udp->uh_dport)==DHCPV4_SERVER_PORT){
+		  dhcp=(struct dhcp_header*)(packet+size_ip+SIZE_ETHERNET+SIZE_UDP);
+			detection(ip,udp,dhcp);		   
+	}
+	}
+	}
+	}
+	else{continue; }
+//	continue;
+//	ip = (struct sniff_ip*)(packet + SIZE_ETHERNET); 
+/*	if(ntohs(eth->ether_type)==ETHERTYPE_IP){
+		ip = (struct sniff_ip*)(packet + SIZE_ETHERNET); 
+	 	size_ip=IP_HL(ip)*4;
+	  if(ip->ip_p==IPPROTO_UDP){
+		udp=(struct udp_header*)(packet+size_ip+SIZE_ETHERNET);	
+	       if(ntohs(udp->uh_sport)==DHCPV4_CLIENT_PORT){
+		printf("zzzzzzzzzzzzz");
+	 }
+	continue;
+	}*/   
+	// udp=(struct udp_header*)(packet+size_ip+SIZE_ETHERNET);
+//	 dhcp=(struct dhcp_header*)(packet+size_ip+SIZE_ETHERNET+SIZE_UDP);
+//	 detection(ip,udp,dhcp); 
 	 
 
         }
@@ -165,6 +197,7 @@ void detection(struct sniff_ip *ip,struct udp_header *udp,struct dhcp_header *dh
 	eth_type=ntohs(eth->ether_type);
 	size_ip = IP_HL(ip)*4;
 //	u_char dp_op;
+//	struct dhcpv4_option *	
 	
 	if(eth_type == 0x0800) {
 	  if(ip->ip_p == IPPROTO_UDP){
@@ -182,12 +215,29 @@ void detection(struct sniff_ip *ip,struct udp_header *udp,struct dhcp_header *dh
 	printf("Server IP Address: %s\n", inet_ntoa(dhcp->dp_siaddr));
 	printf("Gateway IP Address: %s\n", inet_ntoa(dhcp->dp_giaddr));
 	
-	
 
+	struct dhcpv4_message *req = dhcp;
+	uint8_t reqmsg = DHCPV4_MSG_REQUEST; //3
+
+    	struct dhcpv4_option *opt;
+	uint8_t *start = &req->options[4];
+    	uint8_t *end = ((uint8_t*)dhcp) + udp->uh_ulen;
+    //	struct dhcpv4_option *opt;
+
+    	dhcpv4_for_each_option(start, end, opt) {
+        if(opt->type)
+           printf("DHCP Option Number [%d] len[%d].", opt->type, opt->len);
+	if (opt->type == DHCPV4_OPT_MESSAGE && opt->len == 1)
+            reqmsg = opt->data[0];
+
+	}
+	
 
       		}
        	   }   	
 	}
      }
 
+else{printf("chapchap");}
 }
+
