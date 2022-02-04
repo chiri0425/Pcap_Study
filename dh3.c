@@ -22,8 +22,8 @@ bpf_u_int32 net; /* Our IP */
 struct pcap_pkthdr *header; /* The header that pcap gives us */
 const u_char *packet; /* The actual packet */
 struct in_addr addr; /*address */
-char *enter;
-
+//char *enter;
+int enter;
 
 #define SIZE_ETHERNET 14
 #define ETHER_ADDR_LEN 6
@@ -87,7 +87,7 @@ struct dhcp_header {
     u_char		dp_chaddr[16];	/* client hardware address */
     u_char		dp_sname[64];	/* server host name */
     u_char		dp_file[128];	/* boot file name */
-    u_char		dp_options[];	/* variable-length options field */
+    u_char		dp_options[312];	/* variable-length options field */
 };
 
 
@@ -110,6 +110,13 @@ u_int size_ip;
 struct udp_header *udp; //The UDP header
 struct dhcp_header *dhcp; //The DHCO header
 struct sniff_ethernet *eth; //The Ether header
+
+
+
+
+static int request;
+char string;
+
 
 /* main */
 int main(void) {
@@ -145,8 +152,10 @@ int main(void) {
                 return 0;
         }
         printf("Detects packets.\n");	
+        printf("Enter the command: ");
         while(pcap_next_ex(handle, &header, &packet) == 1) {
-        eth=(struct sniff_ethernet*)(packet);
+//	scanf("%c",&enter);
+	 eth=(struct sniff_ethernet*)(packet);
 
 	if(ntohs(eth->ether_type)==ETHERTYPE_IP){
 	 ip=(struct sniff_ip*)(packet+SIZE_ETHERNET);
@@ -156,27 +165,15 @@ int main(void) {
 	      if(ntohs(udp->uh_sport)==DHCPV4_CLIENT_PORT||ntohs(udp->uh_sport)==DHCPV4_SERVER_PORT){
 		if(ntohs(udp->uh_dport)==DHCPV4_CLIENT_PORT||ntohs(udp->uh_dport)==DHCPV4_SERVER_PORT){
 		  dhcp=(struct dhcp_header*)(packet+size_ip+SIZE_ETHERNET+SIZE_UDP);
-			detection(ip,udp,dhcp);		   
+		  	
+		  detection(ip,udp,dhcp);	
+		  scanf("%d",&enter);
+		    if(enter==1){printf("dhcp request: %d\n",request); return 0;}							   
 	}
 	}
 	}
 	}
 	else{continue; }
-//	continue;
-//	ip = (struct sniff_ip*)(packet + SIZE_ETHERNET); 
-/*	if(ntohs(eth->ether_type)==ETHERTYPE_IP){
-		ip = (struct sniff_ip*)(packet + SIZE_ETHERNET); 
-	 	size_ip=IP_HL(ip)*4;
-	  if(ip->ip_p==IPPROTO_UDP){
-		udp=(struct udp_header*)(packet+size_ip+SIZE_ETHERNET);	
-	       if(ntohs(udp->uh_sport)==DHCPV4_CLIENT_PORT){
-		printf("zzzzzzzzzzzzz");
-	 }
-	continue;
-	}*/   
-	// udp=(struct udp_header*)(packet+size_ip+SIZE_ETHERNET);
-//	 dhcp=(struct dhcp_header*)(packet+size_ip+SIZE_ETHERNET+SIZE_UDP);
-//	 detection(ip,udp,dhcp); 
 	 
 
         }
@@ -213,31 +210,38 @@ void detection(struct sniff_ip *ip,struct udp_header *udp,struct dhcp_header *dh
 	printf("Client IP Address: %s\n",inet_ntoa(dhcp->dp_ciaddr));
 	printf("Your IP Address: %s\n", inet_ntoa(dhcp->dp_yiaddr));
 	printf("Server IP Address: %s\n", inet_ntoa(dhcp->dp_siaddr));
-	printf("Gateway IP Address: %s\n", inet_ntoa(dhcp->dp_giaddr));
-	
+	printf("Gateway IP Address: %s\n", inet_ntoa(dhcp->dp_giaddr));	
 
 	struct dhcpv4_message *req = dhcp;
-	uint8_t reqmsg = DHCPV4_MSG_REQUEST; //3
+	uint8_t reqmsg = 0; //setting initial price
 
     	struct dhcpv4_option *opt;
 	uint8_t *start = &req->options[4];
-    	uint8_t *end = ((uint8_t*)dhcp) + udp->uh_ulen;
-    //	struct dhcpv4_option *opt;
+    	uint8_t *end = ((uint8_t*)dhcp) + udp->uh_ulen; /*(uint8_t*)dhcp=udp len*/
+	static int discover;
+	static int offer;
+//	static int request;
+	static int ack;
 
-    	dhcpv4_for_each_option(start, end, opt) {
+
+    	dhcpv4_for_each_option(start, end, opt){ 
         if(opt->type)
-           printf("DHCP Option Number [%d] len[%d].", opt->type, opt->len);
-	if (opt->type == DHCPV4_OPT_MESSAGE && opt->len == 1)
+           printf("DHCP Option Number [%d] len[%d]", opt->type, opt->len);
+	if (opt->type == DHCPV4_OPT_MESSAGE && opt->len == 1){
             reqmsg = opt->data[0];
-
-	}
+	    printf("data: %d",reqmsg);
+	    
+		if(reqmsg==1){ printf(" discover "); discover++;printf("count: %d",discover); }
+		if(reqmsg==2) { printf(" offer "); offer++; printf("count: %d",offer); }
+		if(reqmsg==3){	printf(" reqeust  "); request++; printf("count: %d", request); }
+		if(reqmsg==5){ printf(" ack "); ack++; printf("count: %d", ack); }
 	
-
+	
+	}
+	}
       		}
        	   }   	
 	}
      }
 
-else{printf("chapchap");}
 }
-
