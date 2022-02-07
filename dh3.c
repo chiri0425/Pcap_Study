@@ -113,9 +113,13 @@ struct sniff_ethernet *eth; //The Ether header
 
 
 
-
+/* dhcp option count*/
+static int discover;
+static int offer;
 static int request;
-char string;
+static int ack;
+
+
 
 
 /* main */
@@ -152,9 +156,7 @@ int main(void) {
                 return 0;
         }
         printf("Detects packets.\n");	
-        printf("Enter the command: ");
         while(pcap_next_ex(handle, &header, &packet) == 1) {
-//	scanf("%c",&enter);
 	 eth=(struct sniff_ethernet*)(packet);
 
 	if(ntohs(eth->ether_type)==ETHERTYPE_IP){
@@ -166,17 +168,24 @@ int main(void) {
 		if(ntohs(udp->uh_dport)==DHCPV4_CLIENT_PORT||ntohs(udp->uh_dport)==DHCPV4_SERVER_PORT){
 		  dhcp=(struct dhcp_header*)(packet+size_ip+SIZE_ETHERNET+SIZE_UDP);
 		  	
-		  detection(ip,udp,dhcp);	
-		  scanf("%d",&enter);
-		    if(enter==1){printf("dhcp request: %d\n",request); return 0;}							   
+		  detection(ip,udp,dhcp);
+		  printf("============= DHCP Count ===========\n");
+		  printf("DHCP Discover: %d\n",discover);
+		  printf("DHCP Offer: %d\n",offer);
+		  printf("DHCP Request: %d\n",request);
+		  printf("DHCP Ack: %d\n", ack);
+			
+		  //  scanf("%d",&enter);
+		   // if(enter==1){printf("dhcp request: %d\n",request); return 0;}							   
 	}
 	}
 	}
 	}
 	else{continue; }
-	 
+	continue; 
 
         }
+
 	return 0;
 }
 
@@ -200,7 +209,7 @@ void detection(struct sniff_ip *ip,struct udp_header *udp,struct dhcp_header *dh
 	  if(ip->ip_p == IPPROTO_UDP){
 		if(uh_sport==68 || uh_sport==67){
 		 if(uh_dport==67 || uh_dport==68){				
-	printf("\n========== IP & UDP Packet ==========\n");
+/*	printf("\n========== IP & UDP Packet ==========\n");
         printf("\nIP Source Address: %s\n", inet_ntoa(ip->ip_src));
         printf("IP Destination Address: %s\n", inet_ntoa(ip->ip_dst));
 	printf("Protocol: %d\n",ip->ip_p);	
@@ -211,6 +220,7 @@ void detection(struct sniff_ip *ip,struct udp_header *udp,struct dhcp_header *dh
 	printf("Your IP Address: %s\n", inet_ntoa(dhcp->dp_yiaddr));
 	printf("Server IP Address: %s\n", inet_ntoa(dhcp->dp_siaddr));
 	printf("Gateway IP Address: %s\n", inet_ntoa(dhcp->dp_giaddr));	
+*/
 
 	struct dhcpv4_message *req = dhcp;
 	uint8_t reqmsg = 0; //setting initial price
@@ -218,23 +228,21 @@ void detection(struct sniff_ip *ip,struct udp_header *udp,struct dhcp_header *dh
     	struct dhcpv4_option *opt;
 	uint8_t *start = &req->options[4];
     	uint8_t *end = ((uint8_t*)dhcp) + udp->uh_ulen; /*(uint8_t*)dhcp=udp len*/
-	static int discover;
-	static int offer;
-//	static int request;
-	static int ack;
+	
 
 
     	dhcpv4_for_each_option(start, end, opt){ 
         if(opt->type)
-           printf("DHCP Option Number [%d] len[%d]", opt->type, opt->len);
+          // printf("DHCP Option Number [%d] len[%d]", opt->type, opt->len);
 	if (opt->type == DHCPV4_OPT_MESSAGE && opt->len == 1){
             reqmsg = opt->data[0];
-	    printf("data: %d",reqmsg);
+	   // printf("data: %d\n",reqmsg);
 	    
-		if(reqmsg==1){ printf(" discover "); discover++;printf("count: %d",discover); }
-		if(reqmsg==2) { printf(" offer "); offer++; printf("count: %d",offer); }
-		if(reqmsg==3){	printf(" reqeust  "); request++; printf("count: %d", request); }
-		if(reqmsg==5){ printf(" ack "); ack++; printf("count: %d", ack); }
+		if(reqmsg==1){/* printf(" discover ");*/ discover++;/*printf("count: %d",discover);*/ }
+		if(reqmsg==2) {/* printf(" offer ");*/ offer++;/* printf("count: %d",offer);*/ }
+		if(reqmsg==3){/*	printf(" reqeust  ");*/ request++;/* printf("count: %d", request);*/ }
+		if(reqmsg==5){/* printf(" ack ");*/ ack++;/* printf("count: %d", ack);*/ }
+
 	
 	
 	}
