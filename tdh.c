@@ -22,7 +22,6 @@ bpf_u_int32 net; /* Our IP */
 struct pcap_pkthdr *header; /* The header that pcap gives us */
 const u_char *packet; /* The actual packet */
 struct in_addr addr; /*address */
-//char *enter;
 int enter;
 
 #define SIZE_ETHERNET 14
@@ -120,20 +119,19 @@ static int request;
 static int ack;
 
 
-
+/*thread Data type*/
 pthread_t thread,write;
 
 
 
 
 void *number(){
-
         scanf("%d",&enter);
         if(enter==1){
-///	printf("dhcp discover: %d\n",discover);
-//	printf("dhcp offer: %d\n",offer);
-//	printf("dhcp request: %d\n",request); 
-//	printf("dhcp ack: %d\n", ack);
+	printf("dhcp discover: %d\n",discover);
+	printf("dhcp offer: %d\n",offer);
+	printf("dhcp request: %d\n",request); 
+	printf("dhcp ack: %d\n", ack);
 	
 	}
 }
@@ -156,16 +154,19 @@ void *dcount(){
                 if(ntohs(udp->uh_dport)==DHCPV4_CLIENT_PORT||ntohs(udp->uh_dport)==DHCPV4_SERVER_PORT){
                   dhcp=(struct dhcp_header*)(packet+size_ip+SIZE_ETHERNET+SIZE_UDP);
                   /*print dhcp packet count*/
-                   detection(ip,udp,dhcp);
+                  detection(ip,udp,dhcp);
 
+/* check dhcp message option count
 
-//                  printf("============= DHCP Count ===========\n");
-//                  printf("DHCP Discover: %d\n",discover);
-//                  printf("DHCP Offer: %d\n",offer);
-//                  printf("DHCP Request: %d\n",request);
-//                  printf("DHCP Ack: %d\n", ack);  
-                  //  scanf("%d",&enter);
-                  // if(enter==1){printf("dhcp request: %d\n",request); return 0;}
+                  printf("============= DHCP Count ===========\n");
+                  printf("DHCP Discover: %d\n",discover);
+                  printf("DHCP Offer: %d\n",offer);
+                  printf("DHCP Request: %d\n",request);
+                  printf("DHCP Ack: %d\n", ack);  
+
+*/
+	
+
         }
         }
         }
@@ -173,6 +174,61 @@ void *dcount(){
   
 }
 
+
+
+
+void detection(struct sniff_ip *ip,struct udp_header *udp,struct dhcp_header *dhcp){
+
+        struct sniff_ethernet *eth;
+        eth=(struct sniff_ethernet *)packet;
+        u_short eth_type;
+        u_short uh_sport;
+        u_short uh_dport;
+        u_char dp_options;
+        uh_dport=ntohs(udp->uh_dport);
+        uh_sport=ntohs(udp->uh_sport);
+        eth_type=ntohs(eth->ether_type);
+        size_ip = IP_HL(ip)*4;
+
+
+
+        if(eth_type == 0x0800) {
+          if(ip->ip_p == IPPROTO_UDP){
+                if(uh_sport==68 || uh_sport==67){
+                 if(uh_dport==67 || uh_dport==68){
+
+
+        //dhcp message option
+        struct dhcpv4_message *req = dhcp;
+        uint8_t reqmsg = 0; //setting initial price
+
+        struct dhcpv4_option *opt;
+        uint8_t *start = &req->options[4];
+        uint8_t *end = ((uint8_t*)dhcp) + udp->uh_ulen;//(uint8_t*)dhcp=udp len
+
+
+
+        dhcpv4_for_each_option(start, end, opt){
+        if(opt->type)
+          // printf("DHCP Option Number [%d] len[%d]", opt->type, opt->len);
+        if (opt->type == DHCPV4_OPT_MESSAGE && opt->len == 1){
+            reqmsg = opt->data[0];
+           // printf("data: %d\n",reqmsg);
+
+                if(reqmsg==1){ discover++; }
+                if(reqmsg==2) { offer++; }
+                if(reqmsg==3){ request++; }
+                if(reqmsg==5){ ack++; }
+
+
+        }
+        }
+                }
+           }
+        }
+     }
+
+}
 
 
 
@@ -210,25 +266,18 @@ int main(void) {
                 printf("couldn't install filter.\n");
                 return 0;
         }
-        printf("detects packets.\n");	
+        printf("detects packets.\n");
+	printf("If you want to check the statistics, enter 1: ");	
         while(pcap_next_ex(handle, &header, &packet) == 1) {
 
 //	pthread_t thread,write;
 	
 	pthread_create(&thread, NULL,dcount,NULL);
-
+	usleep(100);
 	pthread_create(&write, NULL, number,NULL);
 
-	if(enter==1) {
-	printf("dhcp discover: %d\n",discover);
-        printf("dhcp offer: %d\n",offer);
-        printf("dhcp request: %d\n",request);
-        printf("dhcp ack: %d\n", ack);  return 0;}
 
-
-//	pthread_join(thread,NULL);
-//	pthread_join(write,NULL);
-
+	if(enter==1) { return 0;	}
 
 
         }
@@ -238,96 +287,6 @@ int main(void) {
 
 }
 
-/*
-void *number(){
-
-	scanf("%d",&enter);
-        if(enter==1){printf("dhcp request: %d\n",request); return 0;}
-
-}
-*/
-
-/*
-void *dcount(){
-		
-	eth=(struct sniff_ethernet*)(packet);
-
-        if(ntohs(eth->ether_type)==ETHERTYPE_IP){
-         ip=(struct sniff_ip*)(packet+SIZE_ETHERNET);
-         size_ip=IP_HL(ip)*4;
-           if(ip->ip_p==IPPROTO_UDP){
-                udp=(struct dhcp_header*)(packet+size_ip+SIZE_ETHERNET);
-              if(ntohs(udp->uh_sport)==DHCPV4_CLIENT_PORT||ntohs(udp->uh_sport)==DHCPV4_SERVER_PORT){
-                if(ntohs(udp->uh_dport)==DHCPV4_CLIENT_PORT||ntohs(udp->uh_dport)==DHCPV4_SERVER_PORT){
-                  dhcp=(struct dhcp_header*)(packet+size_ip+SIZE_ETHERNET+SIZE_UDP);
-                  //print dhcp packet count
-                  detection(ip,udp,dhcp);
-                  printf("============= DHCP Count ===========\n");
-                  printf("DHCP Discover: %d\n",discover);
-                  printf("DHCP Offer: %d\n",offer);
-                  printf("DHCP Request: %d\n",request);
-                  printf("DHCP Ack: %d\n", ack);
-		  //  scanf("%d",&enter);
-                  // if(enter==1){printf("dhcp request: %d\n",request); return 0;}
-        }
-        }
-        }
-        }
-}
-
-*/
 
 
-void detection(struct sniff_ip *ip,struct udp_header *udp,struct dhcp_header *dhcp){
-
-	struct sniff_ethernet *eth;
-	eth=(struct sniff_ethernet *)packet;
-	u_short eth_type;
-	u_short uh_sport;
-	u_short uh_dport;
-	u_char dp_options;
-	uh_dport=ntohs(udp->uh_dport);
-	uh_sport=ntohs(udp->uh_sport);
-	eth_type=ntohs(eth->ether_type);
-	size_ip = IP_HL(ip)*4;
-
-
-	
-	if(eth_type == 0x0800) {
-	  if(ip->ip_p == IPPROTO_UDP){
-		if(uh_sport==68 || uh_sport==67){
-		 if(uh_dport==67 || uh_dport==68){				
-
-
-	//dhcp message option
-	struct dhcpv4_message *req = dhcp;
-	uint8_t reqmsg = 0; //setting initial price
-
-    	struct dhcpv4_option *opt;
-	uint8_t *start = &req->options[4];
-    	uint8_t *end = ((uint8_t*)dhcp) + udp->uh_ulen;//(uint8_t*)dhcp=udp len
-	
-
-
-    	dhcpv4_for_each_option(start, end, opt){ 
-        if(opt->type)
-          // printf("DHCP Option Number [%d] len[%d]", opt->type, opt->len);
-	if (opt->type == DHCPV4_OPT_MESSAGE && opt->len == 1){
-            reqmsg = opt->data[0];
-	   // printf("data: %d\n",reqmsg);
-	    
-		if(reqmsg==1){ discover++; }
-		if(reqmsg==2) { offer++; }
-		if(reqmsg==3){ request++; }
-		if(reqmsg==5){ ack++; }
-
-	
-	
-	}
-	}
-      		}
-       	   }   	
-	}
-     }
-
-} 
+       
