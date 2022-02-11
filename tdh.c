@@ -13,16 +13,21 @@
 
 
 pcap_t *handle; /* Session handle */
-char dev[]="enp0s3.4000"; /* The device to sniff on */
+pcap_if_t *alldevs; /* The device to sniff on */
 char errbuf[PCAP_ERRBUF_SIZE]; /* Error string */
 struct bpf_program fp; /* The compiled filter */
-char *filter_exp; /* The filter expression */
+char filter[]=""; /* The filter expression */
 bpf_u_int32 mask; /* Our netmask */
 bpf_u_int32 net; /* Our IP */
 struct pcap_pkthdr *header; /* The header that pcap gives us */
 const u_char *packet; /* The actual packet */
 struct in_addr addr; /*address */
 int enter;
+int inum, i=0;
+pcap_if_t *dev;
+
+
+
 
 #define SIZE_ETHERNET 14
 #define ETHER_ADDR_LEN 6
@@ -236,49 +241,74 @@ void detection(struct sniff_ip *ip,struct udp_header *udp,struct dhcp_header *dh
 /* main */
 int main(void) {
 
-	/* define the device */
-        if (dev == NULL) {
-                printf("couldn't find default device.\n");
-                return 0;
-        }
-        /* find the properties for the device */
-        printf("my network device: %s\n", dev);
-        if (pcap_lookupnet(dev, &net, &mask, errbuf) == -1) {
-                printf("couldn't get netmask for device. \n");
-                return 0;
-        }
-        addr.s_addr = net;
-        printf("my ip address: %s\n", inet_ntoa(addr));
-        addr.s_addr = mask;
-        printf("my subnetmask: %s\n", inet_ntoa(addr));
-        /* open the session in promiscuous mode */
-        handle = pcap_open_live(dev, BUFSIZ, 1, 0, errbuf);
-        if (handle == NULL) {
-                printf("couldn't open device.\n");
-                return 0;
-        }
-        /* compile and apply the filter */
-        if (pcap_compile(handle, &fp, filter_exp, 0, net) == -1) {
-                printf("couldn't parse filter. \n");
-                return 0;
-        }
-        if (pcap_setfilter(handle, &fp) == -1) {
-                printf("couldn't install filter.\n");
-                return 0;
-        }
+          if(pcap_findalldevs(&alldevs, errbuf) == -1) { 
+
+    printf("Error in pcap_findalldevs: %s\n", errbuf);
+    exit(1);
+
+  }
+
+  for(dev=alldevs; dev; dev=dev->next) { 
+
+    printf("%d. %s", ++i, dev->name);
+    if (dev->description)
+      printf(" (%s)\n", dev->description);
+    else
+      printf(" (No description available)\n");
+  }
+
+  if(i==0) {  
+
+    printf("\nNo interfaces found! Make sure LiPcap is installed.\n");
+    //return -1;
+  }
+
+  printf("Enter the interface number (1-%d):",i);
+  scanf("%d", &inum);
+
+  if(inum < 1 || inum > i) { 
+    printf("\nAdapter number out of range.\n");
+    pcap_freealldevs(alldevs);  
+    return -1;
+  }
+
+  for(dev=alldevs, i=0; i< inum-1 ;dev=dev->next, i++);   
+
+
+  if((handle= pcap_open_live(dev->name, 65536,   1,  0,  errbuf  )) == NULL) {     printf("\nUnable to open the adapter. %s is not supported by WinPcap\n", dev->name);
+    pcap_freealldevs(alldevs);
+    return -1;
+  }
+
+  if (pcap_compile(handle, &fp,filter,0, net) == -1 )  { 
+
+
+    printf("\nUnable to compile the packet filter. Check the syntax.\n");
+    pcap_freealldevs(alldevs);
+    return -1;
+  }
+
+  if (pcap_setfilter(handle, &fp)==-1)  {  
+    printf("\nError setting the filter.\n");
+    pcap_freealldevs(alldevs);
+    return -1;
+  }
+
+  printf("\nlistening on %s...\n", dev->description);  
+  pcap_freealldevs(alldevs);   
+
         printf("detects packets.\n");
-	printf("If you want to check the statistics, enter 1: ");	
+	printf("If you want to check the statistics, enter 1 ");	
         while(pcap_next_ex(handle, &header, &packet) == 1) {
 
-//	pthread_t thread,write;
 	
 	pthread_create(&thread, NULL,dcount,NULL);
 	usleep(100);
 	pthread_create(&write, NULL, number,NULL);
 
+	pthread_detach(thread);
 
-	if(enter==1) { return 0;	}
-
+	if(enter==1) { return 0;}
 
         }
 
