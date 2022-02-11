@@ -122,6 +122,7 @@ static int discover;
 static int offer;
 static int request;
 static int ack;
+static int release;
 
 
 /*thread Data type*/
@@ -161,15 +162,8 @@ void *dcount(){
                   /*print dhcp packet count*/
                   detection(ip,udp,dhcp);
 
-/* check dhcp message option count
 
-                  printf("============= DHCP Count ===========\n");
-                  printf("DHCP Discover: %d\n",discover);
-                  printf("DHCP Offer: %d\n",offer);
-                  printf("DHCP Request: %d\n",request);
-                  printf("DHCP Ack: %d\n", ack);  
 
-*/
 	
 
         }
@@ -224,7 +218,7 @@ void detection(struct sniff_ip *ip,struct udp_header *udp,struct dhcp_header *dh
                 if(reqmsg==2) { offer++; }
                 if(reqmsg==3){ request++; }
                 if(reqmsg==5){ ack++; }
-
+		if(reqmsg==7) { release++;}
 
         }
         }
@@ -307,7 +301,7 @@ int main(void) {
 	pthread_create(&write, NULL, number,NULL);
 
 	pthread_detach(thread);
-
+	pthread_detach(write);
 	if(enter==1) { return 0;}
 
         }
