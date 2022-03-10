@@ -82,7 +82,7 @@ int input_rank(char id[USER_ID_SIZE], int outcome);
 // removing socket from socket array
 void delete_room(Room* room);
 void* write_log();
-char* itoa(long val, char* buf, unsigned radix);
+//char* itoa(long val, char* buf, unsigned radix);
 
 UserController userController;
 MatchingRoomController mRoomController;
@@ -121,7 +121,7 @@ int main(int argc, char* argv[])
 
 	userController.cnt = 0; // userController init
 	create_matching_rooms();   // matching room init
-	pipe(log_fds);      // �αױ�� ������ ����
+	pipe(log_fds);      
 	pthread_create(&t_id, NULL, write_log, NULL);   // writing log init
 	pthread_detach(t_id);
 
@@ -163,7 +163,7 @@ void create_matching_rooms() {
 
 }
 
-void* write_log() {      // �α� �ۼ� �������Լ�
+void* write_log() {    
 	int len;
 	FILE* fp = NULL;
 	while (1) {
@@ -179,6 +179,7 @@ void* write_log() {      // �α� �ۼ� �������Լ�
 	}
 	return NULL;
 }
+
 
 void error_handling(char* msg) {
 	fputs(msg, stderr);
@@ -257,7 +258,7 @@ User* login_view(void* arg) {
 			login_result = login(&clnt_sock, user);
 
 			if (login_result == 1)
-				return user;   // user ������ ��ȯ
+				return user;   
 			else
 				break;
 		case '2':
@@ -285,20 +286,20 @@ int login(void* arg, User* user) {
 	int verify_result = 0;
 	int str_len = 0;
 	int i;
-	// ����ڷκ��� ���̵� ��й�ȣ ����
+	
 	str_len = read(clnt_sock, msg, sizeof(msg));
 	if (str_len == -1) // read() error
 		return 0;
 	printf("%s\n", msg);
 
-	str = strtok(msg, "\n");   // "\n" ���� ���� ���̵�
+	str = strtok(msg, "\n");   
 	strncpy(uid, str, strlen(str));
 	fprintf(stdout, "uid: %s\n", uid);
 
 	printf("remain msg: %s\n", msg);
-	str = strtok(NULL, "\n");   // ������ ��й�ȣ
+	str = strtok(NULL, "\n");   
 	strncpy(upw, str, strlen(str));
-	fprintf(stdout, "upw: %s\n", upw); // ���̵�/��й�ȣ Ȯ��
+	fprintf(stdout, "upw: %s\n", upw); 
 
 	if ((verify_result = rw_login_db(mode, uid, upw)) == 1) {
 		for (i = 0; i < userController.cnt; i++) {
@@ -309,8 +310,8 @@ int login(void* arg, User* user) {
 			}
 		}
 		answer[0] = '1';
-		strncpy(user->id, uid, strlen(uid));   // ���� ���̵� ���
-		user->sock = clnt_sock;   // ���̵�� ������ �����ϱ� ����
+		strncpy(user->id, uid, strlen(uid));  
+		user->sock = clnt_sock;   
 
 		printf("%s : login success\n", user->id);
 		sprintf(log_msg, "%s : login success\n", user->id);
@@ -346,14 +347,14 @@ int sign_up(void* arg) {
 		return 0;
 	//printf("str_:%d, str:%ld\n", str_len, strlen(upw));
 
-	str = strtok(msg, "\n");   // "\n" ���� ���� ���̵�
+	str = strtok(msg, "\n");   
 	strncpy(uid, str, strlen(str));
 	fprintf(stdout, "uid: %s\n", uid);
-	str = strtok(NULL, "\n");   // ������ ��й�ȣ
+	str = strtok(NULL, "\n");   
 	strncpy(upw, str, strlen(str));
 	fputs(upw, stdout);
 
-	// DB���� ���̵� �ߺ� Ȯ�� �� �߰�
+	
 	sign_up_result = rw_login_db(mode, uid, upw);
 
 	if (sign_up_result == 1) {
@@ -376,6 +377,7 @@ int sign_up(void* arg) {
 	return sign_up_result;
 }
 
+
 int main_view(User* user) {
 	int clnt_sock = user->sock;
 	char answer[ANSWER_SIZE] = { 0, };
@@ -393,30 +395,13 @@ int main_view(User* user) {
 		answer[str_len - 1] = '\0';
 
 		switch (answer[0]) {
-		case '1':      // ��Ī
+		case '1':     
 			if ((room = get_matching_room(user)) != NULL) {
 				room_view(user, room);
 			}
 			break;
+
 		case '2':
-			if ((room = get_create_room(user)) != NULL) {
-				room_view(user, room);
-				if (room->cnt == 0) delete_room(room);
-			}
-			break;
-		case '3':
-			enter_created_room(user);
-			break;
-		case '4':
-			search_room(user);
-			break;
-		case '5':
-			search_user(user);
-			break;
-		case '6':
-			print_ranking(user);
-			break;
-		case '7':
 			printf("%s logout\n", user->id);
 			return 0;
 		default:
@@ -463,176 +448,6 @@ Room* get_matching_room(User* user) {
 	return NULL;
 }
 
-Room* get_create_room(User* user) {
-	Room* room = (Room*)malloc(sizeof(Room));   //�� ����
-	char name[21];
-	char str_len;
-	room->cnt = 1;
-	room->clnt_sock[0] = user->sock;
-	memcpy(room->user_id[0], user->id, sizeof(user->id));
-
-	str_len = read(user->sock, name, sizeof(name));
-	if (str_len == -1)
-		return 0;
-	sprintf(room->name, "%s", name);
-
-	pthread_mutex_lock(&room_mutx);
-	room->id = cRoomController.cnt++;
-	cRoomController.room_list[room->id] = room;
-	pthread_mutex_unlock(&room_mutx);
-	printf("%s : create room -> %d %s", user->id, room->id, room->name);
-	sprintf(log_msg, "%s : create room -> %d %s", user->id, room->id, room->name);
-	write(log_fds[1], log_msg, strlen(log_msg));
-
-	return room;
-}
-
-int enter_created_room(User* user) {
-	char msg[21] = { 0 };
-	char* str;
-	Room* room;
-	int num = -1, str_len = 0;
-	int in_room_cnt = 0;
-	int i, entered = 0;
-
-	str_len = read(user->sock, msg, sizeof(msg));      // �� ��ȣ �Ǵ� �̸� �ޱ�
-	if (str_len == -1)   // read() error
-		return 0;
-	printf("%s : try enter the room-> %s", user->id, msg);
-	sprintf(log_msg, "%s : try enter the room -> %s", user->id, msg);
-	write(log_fds[1], log_msg, strlen(log_msg));
-
-	str = strtok(msg, "\n");
-	msg[str_len] = 0;
-	if ((int)msg[0] < 58 && (int)msg[0] > 47)   // ��ȣ�� �˻������� int�� ��ȯ
-		num = atoi(str);
-	strcat(msg, "\n");
-
-	pthread_mutex_lock(&room_mutx);
-	for (i = 0; i < cRoomController.cnt; i++) {
-		if ((strcmp(msg, cRoomController.room_list[i]->name) == 0) ||
-			(num == cRoomController.room_list[i]->id)) {      // ���� ã���� ����
-			in_room_cnt = cRoomController.room_list[i]->cnt;
-			if (in_room_cnt >= 2) {
-				printf("Full\n");
-				break;
-			}
-			else {
-				printf("You can enter tne room\n");
-				room = cRoomController.room_list[i];
-				room->clnt_sock[in_room_cnt] = user->sock;
-				memcpy(room->user_id[1], user->id, sizeof(user->id));
-				room->cnt++;
-				entered = 1;
-				break;
-			}
-		}
-	}
-	pthread_mutex_unlock(&room_mutx);
-	if (entered == 1) {
-		printf("Success enter!\n");
-		sprintf(log_msg, "%s : success enter -> %s", user->id, room->name);
-		write(log_fds[1], log_msg, strlen(log_msg));
-		str_len = write(user->sock, "1\n", sizeof("1\n"));
-		room_view(user, room);
-		if (room->cnt == 0) delete_room(room);
-	}
-	else {
-		printf("Fail\n");
-		sprintf(log_msg, "%s : Fail enter -> %s", user->id, msg);
-		write(log_fds[1], log_msg, strlen(log_msg));
-		str_len = write(user->sock, "0\n", sizeof("0\n"));
-	}
-	return 0;
-}
-
-void search_room(User* user) {
-	int i;
-	char buf[100];
-	char list[1000] = { 0 };
-	printf("%s : search room request : %d\n", user->id, cRoomController.cnt);
-	sprintf(log_msg, "%s : search room request : %d\n", user->id, cRoomController.cnt);
-	write(log_fds[1], log_msg, strlen(log_msg));
-	if (cRoomController.cnt == 0) {
-		write(user->sock, " ", sizeof(" "));
-	}
-	else {
-		for (i = 0; i < cRoomController.cnt; i++) {
-			strcat(list, itoa((cRoomController.room_list[i]->id), buf, 10));
-			strcat(list, " ");
-			strcat(list, cRoomController.room_list[i]->name);
-		}
-		write(user->sock, list, strlen(list));
-	}
-	return;
-}
-
-void search_user(User* user) {      //�������� ����� ��ȸ
-	int i;
-	char list[1000] = { 0 };
-
-	printf("%s : search user request : %d\n", user->id, userController.cnt);
-	sprintf(log_msg, "%s : search user request : %d\n", user->id, userController.cnt);
-	write(log_fds[1], log_msg, strlen(log_msg));
-
-	for (i = 0; i < userController.cnt; i++) {      //���� ����Ʈ ����
-		strcat(list, userController.user_list[i]->id);
-		strcat(list, "\n");
-	}
-	write(user->sock, list, strlen(list));      //Ŭ���̾�Ʈ���� ����
-	return;
-}
-
-
-
-void print_ranking(User* user) {
-	Stat stat[MAX_CLNT] = { 0 };
-	Stat temp;
-	char rankingme[100] = { 0 };
-	char rankingall[1000] = { 0 };
-	int record = 0;
-	int i, j;
-	FILE* fp = NULL;
-
-	if ((fp = fopen("ranking_db.txt", "r")) == NULL) {
-		error_handling("fopen() error");
-	}
-	else {
-		while ((fscanf(fp, "%s %d %d %d\n", stat[record].id, &stat[record].win, &stat[record].draw, &stat[record].lose)) != EOF) {
-			record++;
-		}
-	}
-	fclose(fp);
-
-	for (i = record - 1; i > 0; i--) {
-		for (j = 0; j < i; j++) {
-			if (stat[j].win < stat[j + 1].win) {   // �¼��� ���Ͽ� �ڸ��̵�
-				temp = stat[j + 1];
-				stat[j + 1] = stat[j];
-				stat[j] = temp;
-			}
-			// �¼��� ���ٸ� �й���� ������
-			else if (stat[j].win == stat[j + 1].win && stat[j].lose > stat[j + 1].lose) {
-				temp = stat[j + 1];
-				stat[j + 1] = stat[j];
-				stat[j] = temp;
-			}
-			// �й�� ���� ���ٸ� ���ºΰ� ������
-			else if (stat[j].win == stat[j + 1].win && stat[j].lose == stat[j + 1].lose && stat[j].draw < stat[j + 1].draw)
-			{
-				temp = stat[j + 1];
-				stat[j + 1] = stat[j];
-				stat[j] = temp;
-			}
-		}
-	}
-	for (i = 0; i < record; i++) {      //���� ����Ʈ ����
-		sprintf(rankingme, "%3d�� %15s %5d %6d %6d", i + 1, stat[i].id, stat[i].win, stat[i].draw, stat[i].lose);
-		strcat(rankingall, rankingme);
-		strcat(rankingall, "\n");
-	}
-	write(user->sock, rankingall, strlen(rankingall));      //Ŭ���̾�Ʈ���� ����
-} 
 
 int room_view(User* user, Room* room) {
 	int buf = 0;
@@ -688,7 +503,7 @@ int waiting_user_ready(User* user, Room* room) {
 				return 0;
 			}
 			else if (strcmp(msg, "/?\n") == 0) {
-				write(user->sock, start_msg, sizeof(start_msg));      //����
+				write(user->sock, start_msg, sizeof(start_msg));      
 			}
 			else if (strncmp(msg, "/r\n", strlen("r\n")) == 0 || strncmp(msg, "/R\n", strlen("/R\n")) == 0) {
 				if (clnt_sock == room->clnt_sock[0]) {
@@ -791,13 +606,13 @@ int start_game(User* user, Room* room) {
 				}
 			}
 		}
-		printf("���: %dS %dB\n", strike, ball);
-		sprintf(result, "[���] %dS %dB\n", strike, ball);
+		printf("result: %dS %dB\n", strike, ball);
+		sprintf(result, "[result] %dS %dB\n", strike, ball);
 
 		if (room->gameController.turn == 0) {
 			if (strike == 3) {
 				user1_win = 1;
-				// ������ �������� ���� ���ʱ��� ���
+				
 				sprintf(msg, "%sThat's correct\n If the other person doesn't get it, you win.\n", result);
 				write(room->clnt_sock[0], msg, strlen(msg));
 			}
@@ -845,8 +660,8 @@ int start_game(User* user, Room* room) {
 			printf("%s %sdrawn", room->user_id[0], room->user_id[1]);
 			sprintf(log_msg, "%s %sdraw\n", room->user_id[0], room->user_id[1]);
 			write(log_fds[1], log_msg, strlen(log_msg));
-			input_rank(room->user_id[0], 2);
-			input_rank(room->user_id[1], 2);
+			//input_rank(room->user_id[0], 2);
+			//input_rank(room->user_id[1], 2);
 		}
 		else {
 			write(room->clnt_sock[1], "/win\n", strlen("/win\n"));
@@ -854,8 +669,8 @@ int start_game(User* user, Room* room) {
 			printf("%s win %s lose\n", room->user_id[1], room->user_id[0]);
 			sprintf(log_msg, "%s win %s lose\n", room->user_id[1], room->user_id[0]);
 			write(log_fds[1], log_msg, strlen(log_msg));
-			input_rank(room->user_id[1], 1);
-			input_rank(room->user_id[0], 3);
+			//input_rank(room->user_id[1], 1);
+			//input_rank(room->user_id[0], 3);
 		}
 	}
 	else if (user1_win) {
@@ -864,70 +679,14 @@ int start_game(User* user, Room* room) {
 		printf("%s win %s lose\n", room->user_id[0], room->user_id[1]);
 		sprintf(log_msg, "%s win %s lose\n", room->user_id[0], room->user_id[1]);
 		write(log_fds[1], log_msg, strlen(log_msg));
-		input_rank(room->user_id[1], 3);
-		input_rank(room->user_id[0], 1);
+		//input_rank(room->user_id[1], 3);
+		//input_rank(room->user_id[0], 1);
 	}
-	memset(&(room->gameController), 0, sizeof(room->gameController));   // ���� ����� ��Ʈ�ѷ� �ʱ�ȭ
+	memset(&(room->gameController), 0, sizeof(room->gameController));  
 	return 0;
 }
 
-int input_rank(char id[USER_ID_SIZE], int outcome) {
 
-	FILE* fp = fopen("ranking_db.txt", "rt+");
-	if (fp == NULL) error_handling("fopen() error");
-	else
-	{
-		long seek;
-		char temp_id[USER_ID_SIZE] = { 0 };
-		int w = 0, d = 0, l = 0;
-		while (1)
-		{
-			seek = ftell(fp);
-			if (fscanf(fp, "%s %d %d %d\n", temp_id, &w, &d, &l) == EOF) break;
-			if (!strcmp(temp_id, id)) {
-				switch (outcome) {
-				case 1: w++; break;
-				case 2:   d++; break;
-				case 3:   l++; break;
-				default: break;
-				}
-				fseek(fp, seek, SEEK_SET);
-				fprintf(fp, "%s %d %d %d\n", temp_id, w, d, l);
-				fflush(fp);
-			}
-		}
-		rewind(fp);
-		fclose(fp);
-	}
-}
-
-
-void delete_room(Room* room) {
-	int i;
-	for (i = 0; i < mRoomController.cnt; i++) {
-		if (mRoomController.room_list[i] == room) {
-
-		}
-	}
-	printf("delete room -> %d %s", room->id, room->name);
-	sprintf(log_msg, "delete room -> %d %s", room->id, room->name);
-	write(log_fds[1], log_msg, strlen(log_msg));
-	pthread_mutex_lock(&room_mutx);
-	if (cRoomController.cnt == 1) {
-		cRoomController.room_list[0] = NULL;
-	}
-	else {
-		for (i = room->id; i < cRoomController.cnt - 1; i++) {      // �� ����Ʈ ����
-			cRoomController.room_list[i] = cRoomController.room_list[i + 1];
-			cRoomController.room_list[i]->id--;
-		}
-		cRoomController.room_list[cRoomController.cnt - 1] = NULL;   //�� �迭 ���� ����
-	}
-	cRoomController.cnt--;
-	pthread_mutex_unlock(&room_mutx);
-	free(room);      //�� ����
-	return;
-}
 
 int rw_login_db(char* rw, char* id, char* pw) {
 	FILE* fp = NULL;
@@ -949,35 +708,35 @@ int rw_login_db(char* rw, char* id, char* pw) {
 		error_handling("fopen(loin.txt) error");
 	}
 	printf("\ndb connect!\n");
-	if (strncmp(mode, "r", strlen(mode)) == 0) {   // �α��ο� �ش��ϹǷ� mode�� read ����
-	   // login_db.txt ���� ���پ� ������ "id pw\n"
+	if (strncmp(mode, "r", strlen(mode)) == 0) {   
+	   // login_db.txt 
 		while (fscanf(fp, "%s %s\n", get_id, get_pw) != EOF) {
-			if (strncmp(uid, get_id, strlen(get_id)) == 0) {   // ���̵� ��ġ
+			if (strncmp(uid, get_id, strlen(get_id)) == 0) {   
 				printf("ID match\n");
-				if (strncmp(upw, get_pw, strlen(get_pw)) == 0) {   // ��й�ȣ ��ġ
+				if (strncmp(upw, get_pw, strlen(get_pw)) == 0) {   
 					printf("PW match\n");
 					result = 1;   // true
 				}
 			}
 		}
 	}
-	else if (strncmp(mode, "r+", strlen(mode)) == 0) {   // ȸ�����Կ� �ش��ϹǷ� mode�� rw
-	   // login_db.txt ���� ���پ� ������
+	else if (strncmp(mode, "r+", strlen(mode)) == 0) {   
+	   // login_db.txt 
 		while (fscanf(fp, "%s %s\n", get_id, get_pw) != EOF) {
-			if (strncmp(uid, get_id, strlen(get_id)) == 0) {   // ���̵� ��ġ
+			if (strncmp(uid, get_id, strlen(get_id)) == 0) {   
 				printf("ID already exit\n");
-				is_duplicated_id = 1;            // ���̵� �ߺ� üũ
+				is_duplicated_id = 1;            
 				break;
 			}
 		}
-		// ���̵� �ߺ����� ������ login_db.txt�� ���ο� ���� ���
+		
 		if (!(is_duplicated_id)) {
 			printf("Account registration\n");
-			fprintf(fp, "%s %s\n", uid, upw);   // login_db.txt.�� ���� ���
+			fprintf(fp, "%s %s\n", uid, upw);   // login_db.txt
 			if ((rank_fp = fopen("ranking_db.txt", "at+")) == NULL) {   // rankig_db.txt open
 				error_handling("fopen() error");
 			}
-			fprintf(rank_fp, "%s 0 0 0\n", uid);   // ��ŷ �ʱⰪ ���
+			fprintf(rank_fp, "%s 0 0 0\n", uid);   
 			fclose(rank_fp);            // ranking_db.txt close
 			result = 1;   // true
 		}
@@ -988,39 +747,3 @@ int rw_login_db(char* rw, char* id, char* pw) {
 	return result;   // Y == 1 or N == 0
 }
 
-char* itoa(long val, char* buf, unsigned radix)
-{
-	char* p;
-	char* firstdig;
-	char temp;
-	unsigned digval;
-	p = buf;
-
-	if (radix == 10 && val < 0) {
-		*p++ = '-';
-		val = (unsigned long)(-(long)val);
-	}
-
-	firstdig = p;    /* save pointer to first digit */
-
-	do {
-		digval = (unsigned)(val % radix);
-		val /= radix;
-		if (digval > 9)
-			* p++ = (char)(digval - 10 + 'a');
-		else
-			*p++ = (char)(digval + '0');
-	} while (val > 0);
-
-	*p-- = '\0';
-
-	do {
-		temp = *p;
-		*p = *firstdig;
-		*firstdig = temp;
-		--p;
-		++firstdig;
-	} while (firstdig < p);
-
-	return buf;
-}
