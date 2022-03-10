@@ -30,11 +30,11 @@ int room_view(void* arg, User* user);
 int chatting(void* arg, User* user);
 int start_game(void* arg, User* user);
 int enter_matching_room(void* arg, User* user);
-int create_room(void* arg, User* user);      //�� �����
-int enter_room(void* arg, User* user);      //�� ����
-int search_room(void* arg);      //�� ��� ����
-int search_user(void* arg);      //������ ����� ����
-int ranking(void* arg);
+//int create_room(void* arg, User* user);      
+//int enter_room(void* arg, User* user);      
+//int search_room(void* arg);      
+//int search_user(void* arg);      
+//int ranking(void* arg);
 void* send_msg(void* multiple_arg);
 void* recv_msg(void* arg);
 void error_handling(char* msg);
@@ -74,7 +74,7 @@ void* clnt_view(void* arg) {
 	int end = 1;
 	User* user = (User*)malloc(sizeof(User));
 	system("clear");
-	if ((user = login_view(&sock)) != NULL) {   // �α��� ����
+	if ((user = login_view(&sock)) != NULL) {   
 		while (end == 1) {
 			end = main_view(&sock, user);
 		}
@@ -82,7 +82,7 @@ void* clnt_view(void* arg) {
 	return NULL;
 }
 
-// ���� �� ù ȭ������ �α��θ� ���� ��
+
 User* login_view(void* arg) {
 	int sock = *((int*)arg);
 	User* user = (User*)malloc(sizeof(User));
@@ -91,11 +91,7 @@ User* login_view(void* arg) {
 	int login_result = 0;
 
 	while (1) {
-		/*fputs("\n* * * * * * * * * * * * * * * * *\n", stdout);
-		fputs("*                               *\n", stdout);
-		fputs("*        ���ڰ� ���ھ߱�        *\n", stdout);
-		fputs("*                               *\n", stdout);
-		fputs("* * * * * * * * * * * * * * * * *\n", stdout); */
+		
 		fputs("\n\n=== menue ===\n", stdout);
 		fputs("\n1. login\n", stdout);
 		fputs("\n2. sign up\n", stdout);
@@ -108,20 +104,20 @@ User* login_view(void* arg) {
 		fflush(stdin);
 
 		switch (answer[0]) {
-		case '1': // �α���
-			login_result = login(&sock, user);   // �α��� ���
+		case '1': 
+			login_result = login(&sock, user);   
 
-			if (login_result == 1) {   // �α��� ����
+			if (login_result == 1) {   
 				return user;
 			}
-			else   // �α��� ����
+			else   
 				break;
-		case '2': // ���� ����
+		case '2': 
 			sign_up(&sock);
 			break;
 		case '3':
 			fputs("\nclose connect\n", stdout);
-			return NULL;   // ���� ��û
+			return NULL;  
 		default:
 			system("clear");
 			fputs("\nenter menue (1-3). \n", stdout);
@@ -141,19 +137,14 @@ int login(void* arg, User* user) {
 	char answer[ANSWER_SIZE];
 	int login_result = 0;
 	system("clear");
-	/*
-	fputs("\n* * * * * * * * * * * * * * * * *\n", stdout);
-	fputs("*                               *\n", stdout);
-	fputs("*        ���ڰ� ���ھ߱�        *\n", stdout);
-	fputs("*                               *\n", stdout);
-	fputs("* * * * * * * * * * * * * * * * *\n", stdout);*/
+
 	fputs("\n\n--- login ---\n", stdout);
 
 	fputs("\nID : ", stdout);
-	fgets(id, sizeof(id), stdin); // ���̵� �Է�
+	fgets(id, sizeof(id), stdin); 
 
 	fputs("\nPW : ", stdout);
-	fgets(pw, sizeof(pw), stdin); // ��й�ȣ �Է�
+	fgets(pw, sizeof(pw), stdin); 
 
 	sprintf(msg, "%s%s", id, pw);
 	write(sock, msg, sizeof(msg));
@@ -162,7 +153,7 @@ int login(void* arg, User* user) {
 	printf("logining...\n");
 	sleep(0.5);
 	read(sock, answer, sizeof(answer));
-	if ((answer[0]) == '1') {   // �α��� ����
+	if ((answer[0]) == '1') {   
 		strncpy(user->id, id, strlen(id) - 1);
 		fputs("\nlogin success!\n", stdout);
 		login_result = 1;
@@ -177,7 +168,7 @@ int login(void* arg, User* user) {
 	return login_result;   // 1 or 0
 }
 
-// ȸ�������� ���� ���̵�/��й�ȣ�� ����ڷκ��� �Է¹���
+
 int sign_up(void* arg) {
 	int sock = *((int*)arg);
 	int id_len = USER_ID_SIZE;
@@ -186,12 +177,8 @@ int sign_up(void* arg) {
 	int sign_up_result = 0;
 	char answer[ANSWER_SIZE];
 	system("clear");
-	/*
-	fputs("\n* * * * * * * * * * * * * * * * *\n", stdout);
-	fputs("*                               *\n", stdout);
-	fputs("*        ���ڰ� ���ھ߱�        *\n", stdout);
-	fputs("*                               *\n", stdout);
-	fputs("* * * * * * * * * * * * * * * * *\n", stdout);*/
+
+
 	fputs("\n\n--- create account ---\n", stdout);
 
 	fputs("\nID : ", stdout);
@@ -227,12 +214,8 @@ int main_view(void* arg, User* user) {
 	int sock = *((int*)arg);
 	static int stat = 0;
 	char answer[ANSWER_SIZE];
-	char msg[] = "\n = = = ��  �� = = =\n1. game start\n2. create room\n3. enter the room\n4. search the room\n5. check current user\n6. ranking\n7. logout\n0\n";
-	/*fputs("\n* * * * * * * * * * * * * * * * *\n", stdout);
-	fputs("*                               *\n", stdout);
-	fputs("*        ���ڰ� ���ھ߱�        *\n", stdout);
-	fputs("*                               *\n", stdout);
-	fputs("* * * * * * * * * * * * * * * * *\n", stdout);*/
+	char msg[] = "\n = = = Menue = = =\n1. game start\n2. logout\n";
+
 	if (stat++ == 0) printf("\n%s welcome!!!\n", user->id);
 	printf("%s", msg);
 
@@ -247,32 +230,11 @@ int main_view(void* arg, User* user) {
 		case '1':
 			enter_matching_room(&sock, user);
 			return 1;
+
 		case '2':
-			create_room(&sock, user);
-			return 1;
-		case '3':
-			enter_room(&sock, user);
-			return 1;
-		case '4':
-			search_room(&sock);
-			break;
-		case '5':
-			search_user(&sock);
-			break;
-		case '6':
-			ranking(&sock);
-			break;
-		case '7':
-			printf("������ �����մϴ�.\n\n");
+			printf("logOut\n\n");
 			return 0;
-		/*case '0':
-			system("clear");
-			fputs("\n* * * * * * * * * * * * * * * * *\n", stdout);
-			fputs("*                               *\n", stdout);
-			fputs("*        ���ڰ� ���ھ߱�        *\n", stdout);
-			fputs("*                               *\n", stdout);
-			fputs("* * * * * * * * * * * * * * * * *\n", stdout);
-			printf("%s", msg);*/
+
 		default:
 			break;
 		}
@@ -287,94 +249,6 @@ int enter_matching_room(void* arg, User* user) {
 	printf("enter the room\n");
 	room_view(&sock, user);
 
-	return 0;
-}
-
-int create_room(void* arg, User* user) {      
-	int sock = *(int*)arg;
-	char name[21];
-	int str_len = 0;
-	fputs("\nroom name : ", stdout);
-	fgets(name, sizeof(name), stdin);
-	name[strlen(name)] = 0;
-	system("clear");
-	printf("creating... -> %s", name);
-	str_len = write(sock, name, sizeof(name));
-	if (str_len == -1)
-		return 0;
-
-	printf("success!!\n");
-	room_view(&sock, user);
-
-	return 0;
-}
-
-int enter_room(void* arg, User* user) {
-	int sock = *(int*)arg;
-	char name[21];
-	char msg[BUF_SIZE];
-	char answer[ANSWER_SIZE];
-	int str_len = 0;
-
-	fputs("\nEnter your room number or name ", stdout);
-	fgets(name, sizeof(name), stdin);
-	str_len = write(sock, name, sizeof(name));
-	if (str_len == -1)
-		return 0;
-
-	system("clear");
-	printf("entering... -> %s", name);
-
-	read(sock, answer, sizeof(answer));   // 
-
-	if (strcmp(answer, "1\n") == 0) {   //
-		printf(" Success!!\n");
-		room_view(&sock, user);
-	}
-	else {      // 
-		printf(" Fail!\n");
-	}
-	return 0;
-}
-
-int search_room(void* arg) {      // �� id name ���
-	int sock = *(int*)arg;
-	char msg[1000];
-	int str_len = 0;
-
-	fputs("\nSearch room\n", stdout);
-	str_len = read(sock, msg, sizeof(msg));      // �� ��� �б�
-	if (str_len == -1)   // read() error
-		return 0;
-	msg[str_len] = 0;
-	fputs(msg, stdout);
-	return 0;
-}
-
-int search_user(void* arg) {   // �������� ����� ��ȸ
-	int sock = *(int*)arg;
-	char msg[1000];
-	int str_len = 0;
-
-	printf("\nsearch user\n");
-	str_len = read(sock, msg, sizeof(msg));      // ����� ��� �б�
-	if (str_len == -1)   // read() error
-		return 0;
-
-	msg[str_len] = 0;
-	fputs(msg, stdout);
-	return 0;
-}
-
-int ranking(void* arg) {
-	int sock = *(int*)arg;
-	char msg[1000];
-
-	fputs("\nranking\n", stdout);
-	fputs(" ranking            ID     win  same  loose\n", stdout);
-	fputs("", stdout);
-	read(sock, msg, sizeof(msg) - 1);
-	fputs(msg, stdout);
 	return 0;
 }
 
@@ -425,7 +299,7 @@ void* send_msg(void* multiple_arg)
 	char name_msg[USER_ID_SIZE + BUF_SIZE];
 	char uid[USER_ID_SIZE];
 
-	strncpy(uid, mArg.id, sizeof(mArg.id)); // id ����
+	strncpy(uid, mArg.id, sizeof(mArg.id)); // id 
 	sprintf(start_msg, "%s enter!\n", mArg.id);
 	write(mArg.sock, start_msg, sizeof(start_msg));
 
@@ -494,9 +368,9 @@ int start_game(void* arg, User* user) {
 	int turn = 1;
 	int cnt = 1;
 
-	while (1) {   // ������ ���ߴ� ����ڰ� ���ö����� �ݺ�
+	while (1) {   
 		if (turn) {
-			while (1) { // �������� ���ڸ� �Է¹ޱ� ���� �ݺ�
+			while (1) { 
 				if (first == 1) {
 					fprintf(stdout, "%suser Please enter a 3-digit number between 1 and 9. (ex: 123): ", user->id);
 					first--;
@@ -506,16 +380,16 @@ int start_game(void* arg, User* user) {
 				}
 				fgets(user_num, sizeof(user_num), stdin);
 				if (user_num[0] < '1' || user_num[0] > '9' || user_num[1] < '1' || user_num[1] > '9' || user_num[2] < '1' || user_num[2] > '9')
-				{ // �Է��� ���ڰ� 1 ~ 9 ���ڰ� �ƴϸ� �ٽ� �Է¹޵��� 
+				{ 
 					printf("You can't enter numbers outside the scope\n");
 					continue;
 				}
 				else if (user_num[0] == user_num[1] || user_num[0] == user_num[2] || user_num[1] == user_num[2])
-				{ // �Է��� ���� �߿� �ߺ��� �� ������ �ٽ� �Է¹޵��� 
+				{ 
 					printf("You can't type in duplicate numbers..\n");
 					continue;
 				}
-				break; // �ƹ� ���� ���� ��� �ݺ� ���� 
+				break; 
 			}
 			write(sock, user_num, strlen(user_num));
 			turn = !turn;
